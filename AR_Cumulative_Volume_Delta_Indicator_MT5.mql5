@@ -13,14 +13,15 @@
 #property indicator_buffers 13
 #property indicator_plots 1
 
-#property indicator_label1  "Cumulative Delta Volume"
 #property indicator_type1   DRAW_COLOR_HISTOGRAM
-#property indicator_color1  Red,Green
-#property indicator_style1  STYLE_SOLID
+#property indicator_label1  "Cumulative Delta Volume"
+#property indicator_color1  Green,Red
 #property indicator_width1  2
+#property indicator_level1  0.0
+#property indicator_levelstyle STYLE_SOLID
+#property indicator_levelcolor DimGray
 
 input int CDIPeriod = 14; // Period
-input int MaxBars = 5000; // Maximum number of bars to calculate
 
 double cumulative_volume_delta_Buffer[];
 double upper_wick_Buffer[];
@@ -60,9 +61,7 @@ int OnInit()
    PlotIndexSetInteger(0,PLOT_COLOR_INDEXES,2);
    PlotIndexSetInteger(0,PLOT_DRAW_BEGIN,CDIPeriod-1);
 
-   PlotIndexSetInteger(0,PLOT_LINE_COLOR,0,Green);
-   PlotIndexSetInteger(1,PLOT_LINE_COLOR,0,Red);
-
+  
    string shortname;
    StringConcatenate(shortname,"CDI ( ",CDIPeriod," )");
 //--- set a label do display in DataWindow
@@ -71,9 +70,7 @@ int OnInit()
    IndicatorSetString(INDICATOR_SHORTNAME,shortname);
 //--- set accuracy of displaying the indicator values
    IndicatorSetInteger(INDICATOR_DIGITS,2);
-   IndicatorSetDouble(INDICATOR_LEVELVALUE,0);
-   IndicatorSetInteger(INDICATOR_LEVELCOLOR,0);
-   IndicatorSetInteger(INDICATOR_LEVELSTYLE,1);
+
 
 //---
    return(INIT_SUCCEEDED);
@@ -94,15 +91,12 @@ int OnCalculate(const int rates_total,
   {
 //---
    int start = 0;
-   int MaxBarsVar = MaxBars;
-   if(MaxBarsVar>rates_total)
+
+   if(rates_total<CDIPeriod)
      {
-      MaxBarsVar = rates_total;
-     }
-
-   if(MaxBars<CDIPeriod)
+      Print("Not enough rates...");
       return(0);
-
+     }
 
    if(prev_calculated==0)
      {
@@ -185,27 +179,22 @@ int OnCalculate(const int rates_total,
 //cumulative_selling_volume
    ExponentialMAOnBuffer(rates_total,prev_calculated,1,CDIPeriod,selling_volume_Buffer,cumulative_selling_volume_Buffer);
 
-   if(ArrayRange(cumulative_buying_volume_Buffer,0) == ArrayRange(cumulative_selling_volume_Buffer,0))
+
+   for(int i=prev_calculated; i<rates_total; i++)
      {
-      for(int i=prev_calculated; i<rates_total; i++)
+     
+      cumulative_volume_delta_Buffer[i] = cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i];
+
+      if(cumulative_volume_delta_Buffer[i] > 0)
         {
-        
-        cumulative_volume_delta_Buffer[i] = cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i];
-        
-         if(cumulative_volume_delta_Buffer[i] > 0)
-           {
-            HistogramColorBuffer[i]=  0;
-           }
-         else
-           {
-            HistogramColorBuffer[i]=  1;
-           }         
+         HistogramColorBuffer[i]=  0;
+        }
+      else
+        {
+         HistogramColorBuffer[i]=  1;
         }
      }
-   else
-     {
-      Print("Buffer range mismatch...");
-     }
+
 
    return(rates_total);
   }
