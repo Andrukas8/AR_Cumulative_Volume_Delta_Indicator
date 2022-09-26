@@ -21,7 +21,8 @@
 #property indicator_levelstyle STYLE_SOLID
 #property indicator_levelcolor DimGray
 
-input int CDIPeriod = 14; // Period
+input int CDIPeriod = 10; // Period
+input int CDIRange = 200; // Range
 
 double cumulative_volume_delta_Buffer[];
 double upper_wick_Buffer[];
@@ -58,10 +59,11 @@ int OnInit()
    SetIndexBuffer(11,cumulative_selling_volume_Buffer,INDICATOR_CALCULATIONS);
    SetIndexBuffer(12,HistogramColorBuffer,INDICATOR_COLOR_INDEX);
 
+
    PlotIndexSetInteger(0,PLOT_COLOR_INDEXES,2);
    PlotIndexSetInteger(0,PLOT_DRAW_BEGIN,CDIPeriod-1);
 
-  
+
    string shortname;
    StringConcatenate(shortname,"CDI ( ",CDIPeriod," )");
 //--- set a label do display in DataWindow
@@ -90,26 +92,32 @@ int OnCalculate(const int rates_total,
                 const int &spread[])
   {
 //---
-   int start = 0;
-
    if(rates_total<CDIPeriod)
      {
       Print("Not enough rates...");
       return(0);
      }
 
-   if(prev_calculated==0)
+
+//--- set limit for which bars need to be (re)calculated
+   int limit;
+   int range;
+
+   if(prev_calculated==0 || prev_calculated<0 || prev_calculated>rates_total)
+      limit=rates_total-1;
+   else
+      limit=rates_total-prev_calculated;
+
+   if(limit < CDIRange)
      {
-      //--- set zero values to zero indexes
-      cumulative_volume_delta_Buffer[0]=0.0;
+      range = 0;
+     }
+   else
+     {
+      range = CDIRange;
      }
 
-   if(prev_calculated==0)
-      start=1;  // start filling out from the 1st index
-   else
-      start=prev_calculated-1;    // set start equal to the last index in the arrays
-
-   for(int i=start; i<rates_total; i++)
+   for(int i=limit; i>=limit-range; i--)
      {
       //upper_wick_Buffer
       if(close[i]>open[i])
@@ -146,59 +154,48 @@ int OnCalculate(const int rates_total,
       //percent_body_length = body_length/spread
       percent_body_length_Buffer[i] = body_length_Buffer[i]/spread_Buffer[i];
 
+
       //buying_volume
       if(close[i]>open[i])
         {
-         buying_volume_Buffer[i] = (percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i];
+         buying_volume_Buffer[i] = NormalizeDouble((percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],2);
         }
       else
         {
-         buying_volume_Buffer[i] = ((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i];
+         buying_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],2);
         }
 
       //selling_volume
       if(close[i]<open[i])
         {
-         selling_volume_Buffer[i] = (percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i];
+         selling_volume_Buffer[i] = NormalizeDouble((percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],2);
         }
       else
         {
-         selling_volume_Buffer[i] = ((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i];
+         selling_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i],2);
         }
      }
-
-//cumulative_volume_delta_Buffer
-   if(prev_calculated==0)
-      start=CDIPeriod-1; // set the starting index for input arrays
-   else
-      start=prev_calculated-1;    // set 'start' equal to the last index in the arrays
 
 //cumulative_buying_volume
-   ExponentialMAOnBuffer(rates_total,prev_calculated,1,CDIPeriod,buying_volume_Buffer,cumulative_buying_volume_Buffer);
+   ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,buying_volume_Buffer,cumulative_buying_volume_Buffer);
 
 //cumulative_selling_volume
-   ExponentialMAOnBuffer(rates_total,prev_calculated,1,CDIPeriod,selling_volume_Buffer,cumulative_selling_volume_Buffer);
+   ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,selling_volume_Buffer,cumulative_selling_volume_Buffer);
 
-
-   for(int i=prev_calculated; i<rates_total; i++)
+   for(int i=limit; i>=limit-range; i--)
      {
-     
-      cumulative_volume_delta_Buffer[i] = cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i];
 
-      if(cumulative_volume_delta_Buffer[i] > 0)
-        {
-         HistogramColorBuffer[i]=  0;
-        }
+      cumulative_volume_delta_Buffer[i] = NormalizeDouble(cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i],2);
+
+      if(cumulative_buying_volume_Buffer[i] > cumulative_selling_volume_Buffer[i])
+         HistogramColorBuffer[i]=0;
       else
-        {
-         HistogramColorBuffer[i]=  1;
-        }
-     }
+         HistogramColorBuffer[i]=1;
 
+     }
 
    return(rates_total);
   }
 //+------------------------------------------------------------------+
-
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
