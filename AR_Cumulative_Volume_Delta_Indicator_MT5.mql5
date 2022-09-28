@@ -38,17 +38,13 @@ double cumulative_buying_volume_Buffer[];
 double cumulative_selling_volume_Buffer[];
 double HistogramColorBuffer[];
 
-//--- An array to store colors
-color colors[]= {clrDarkGreen,clrTomato};
-
 string text;
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
-  {
-   text = "";
+  {   
 //--- indicator buffers mapping
    SetIndexBuffer(0,cumulative_volume_delta_Buffer,INDICATOR_DATA);
    SetIndexBuffer(1,HistogramColorBuffer,INDICATOR_COLOR_INDEX);
@@ -167,7 +163,6 @@ int OnCalculate(const int rates_total,
       else
          selling_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i],5);
      }
-
 
 //cumulative_buying_volume   //cumulative_selling_volume
    ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,buying_volume_Buffer,cumulative_buying_volume_Buffer);
