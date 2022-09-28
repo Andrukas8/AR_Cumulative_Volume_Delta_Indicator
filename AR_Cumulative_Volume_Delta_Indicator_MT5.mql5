@@ -51,21 +51,21 @@ int OnInit()
    text = "";
 //--- indicator buffers mapping
    SetIndexBuffer(0,cumulative_volume_delta_Buffer,INDICATOR_DATA);
-   SetIndexBuffer(1,upper_wick_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(2,lower_wick_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(3,spread_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(4,body_length_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(5,percent_upper_wick_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(6,percent_lower_wick_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(7,percent_body_length_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(8,buying_volume_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(9,selling_volume_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(10,cumulative_buying_volume_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(11,cumulative_selling_volume_Buffer,INDICATOR_CALCULATIONS);
-   SetIndexBuffer(12,HistogramColorBuffer,INDICATOR_COLOR_INDEX);
-
+   SetIndexBuffer(1,HistogramColorBuffer,INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(2,upper_wick_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(3,lower_wick_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(4,spread_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(5,body_length_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(6,percent_upper_wick_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(7,percent_lower_wick_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(8,percent_body_length_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(9,buying_volume_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(10,selling_volume_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(11,cumulative_buying_volume_Buffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(12,cumulative_selling_volume_Buffer,INDICATOR_CALCULATIONS);
 
    ArraySetAsSeries(cumulative_volume_delta_Buffer,false);
+   ArraySetAsSeries(HistogramColorBuffer,false);
    ArraySetAsSeries(upper_wick_Buffer,false);
    ArraySetAsSeries(lower_wick_Buffer,false);
    ArraySetAsSeries(spread_Buffer,false);
@@ -77,21 +77,15 @@ int OnInit()
    ArraySetAsSeries(selling_volume_Buffer,false);
    ArraySetAsSeries(cumulative_buying_volume_Buffer,false);
    ArraySetAsSeries(cumulative_selling_volume_Buffer,false);
-   ArraySetAsSeries(HistogramColorBuffer,false);
-
 
    PlotIndexSetInteger(0,PLOT_COLOR_INDEXES,2);
    PlotIndexSetInteger(0,PLOT_DRAW_BEGIN,CDIPeriod-1);
 
    string shortname;
    StringConcatenate(shortname,"CDI ( ",CDIPeriod," )");
-//--- set a label do display in DataWindow
    PlotIndexSetString(0,PLOT_LABEL,shortname);
-//--- set a name to show in a separate sub-window or a pop-up help
    IndicatorSetString(INDICATOR_SHORTNAME,shortname);
-//--- set accuracy of displaying the indicator values
    IndicatorSetInteger(INDICATOR_DIGITS,2);
-
 
 //---
    return(INIT_SUCCEEDED);
@@ -111,8 +105,6 @@ int OnCalculate(const int rates_total,
                 const int &spread[])
   {
 //---
-// text = "";
-
    if(rates_total<CDIPeriod)
      {
       Print("Not enough rates...");
@@ -134,11 +126,7 @@ int OnCalculate(const int rates_total,
    else
       range = CDIRange;
 
-
-
-   for(int i=limit; i>=limit-range; i--)
-
-      //for(int i=1; i<rates_total-CDIRange && !IsStopped(); i++)
+   for(int i=limit; i>=limit-range; i--)      
      {
       //upper_wick_Buffer
       if(close[i]>open[i])
@@ -178,7 +166,6 @@ int OnCalculate(const int rates_total,
          selling_volume_Buffer[i] = NormalizeDouble((percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],5);
       else
          selling_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i],5);
-
      }
 
 
@@ -187,42 +174,23 @@ int OnCalculate(const int rates_total,
    ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,selling_volume_Buffer,cumulative_selling_volume_Buffer);
 
 
-   for(int i=limit; i>=limit-range; i--)
-      //   for(int i=1; i<rates_total-CDIRange && !IsStopped(); i++)
+   for(int i=limit; i>=limit-range; i--)      
      {
-
       //cumulative_volume_delta_Buffer
       cumulative_volume_delta_Buffer[i] = NormalizeDouble(cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i],5);
 
       // Histogram Coloring
-      if(cumulative_buying_volume_Buffer[i] < cumulative_selling_volume_Buffer[i])
-        {
+      if(cumulative_volume_delta_Buffer[i] > 0)       
          HistogramColorBuffer[i]=0;
-         //Print(HistogramColorBuffer[i]);
-        }
-
-      else
-        {
-         HistogramColorBuffer[i]=1;
-         //Print(HistogramColorBuffer[i]);
-        }
-
-      /*
-            text += "upper_wick_Buffer " +  upper_wick_Buffer[i] + "\n";
-            text += "lower_wick_Buffer " +  lower_wick_Buffer[i] + "\n";
-            text += "spread_Buffer " +  spread_Buffer[i] + "\n";
-            text += "body_length_Buffer " +  body_length_Buffer[i] + "\n";
-            text += "percent_upper_wick_Buffer " +  percent_upper_wick_Buffer[i] + "\n";
-            text += "percent_lower_wick_Buffer " +  percent_lower_wick_Buffer[i] + "\n";
-            text += "percent_body_length_Buffer " +  percent_body_length_Buffer[i] + "\n";
-            text += "buying_volume_Buffer " +  buying_volume_Buffer[i] + "\n";
-            text += "selling_volume_Buffer " +  selling_volume_Buffer[i] + "\n";
-            text += "cumulative_volume_delta_Buffer " +  cumulative_volume_delta_Buffer[i] + "\n";
-      */
+      else        
+         HistogramColorBuffer[i]=1;        
+ 
      }
-// Comment(text);
+
    return(rates_total);
   }
+
+
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
