@@ -44,7 +44,7 @@ string text;
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
-  {   
+  {
 //--- indicator buffers mapping
    SetIndexBuffer(0,cumulative_volume_delta_Buffer,INDICATOR_DATA);
    SetIndexBuffer(1,HistogramColorBuffer,INDICATOR_COLOR_INDEX);
@@ -122,8 +122,9 @@ int OnCalculate(const int rates_total,
    else
       range = CDIRange;
 
-   for(int i=limit; i>=limit-range; i--)      
+   for(int i=limit; i>=limit-range; i--)
      {
+
       //upper_wick_Buffer
       if(close[i]>open[i])
          upper_wick_Buffer[i] = NormalizeDouble(high[i]-close[i],_Digits);
@@ -162,24 +163,43 @@ int OnCalculate(const int rates_total,
          selling_volume_Buffer[i] = NormalizeDouble((percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],5);
       else
          selling_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i],5);
+
      }
 
 //cumulative_buying_volume   //cumulative_selling_volume
    ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,buying_volume_Buffer,cumulative_buying_volume_Buffer);
    ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,selling_volume_Buffer,cumulative_selling_volume_Buffer);
 
-
-   for(int i=limit; i>=limit-range; i--)      
+   for(int i=limit; i>=limit-range; i--)
      {
+
       //cumulative_volume_delta_Buffer
       cumulative_volume_delta_Buffer[i] = NormalizeDouble(cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i],5);
 
       // Histogram Coloring
-      if(cumulative_volume_delta_Buffer[i] > 0)       
+      if(cumulative_volume_delta_Buffer[i] > 0)
          HistogramColorBuffer[i]=0;
-      else        
-         HistogramColorBuffer[i]=1;        
- 
+      else
+         HistogramColorBuffer[i]=1;
+
+
+      text="";
+      text += DoubleToString(upper_wick_Buffer[i],4) + " upper_wick_Buffer\n";
+      text += DoubleToString(lower_wick_Buffer[i],4) + " lower_wick_Buffer\n";
+      text += DoubleToString(spread_Buffer[i],4) + " spread_Buffer\n";
+      text += DoubleToString(body_length_Buffer[i],4) + " body_length_Buffer\n";
+      text += DoubleToString(percent_upper_wick_Buffer[i],4) + " percent_upper_wick_Buffer\n";
+      text += DoubleToString(percent_lower_wick_Buffer[i],4) + " percent_lower_wick_Buffer\n";
+      text += DoubleToString(upper_wick_Buffer[i],4) + " upper_wick_Buffer\n";
+      text += DoubleToString(percent_body_length_Buffer[i],4) + " percent_body_length_Buffer\n";
+      text += DoubleToString(buying_volume_Buffer[i],4) + " buying_volume_Buffer\n";
+      text += DoubleToString(percent_body_length_Buffer[i],4) + " percent_body_length_Buffer\n";
+      text += DoubleToString(selling_volume_Buffer[i],4) + " selling_volume_Buffer\n";
+      text += DoubleToString(cumulative_buying_volume_Buffer[i],4) + " cumulative_buying_volume_Buffer\n";
+      text += DoubleToString(cumulative_selling_volume_Buffer[i],4) + " cumulative_selling_volume_Buffer\n";
+      text += DoubleToString(cumulative_volume_delta_Buffer[i],4) + " cumulative_volume_delta_Buffer\n";
+      text += DoubleToString(HistogramColorBuffer[i],4) + " HistogramColorBuffer\n";
+      Comment(text);
      }
 
    return(rates_total);
