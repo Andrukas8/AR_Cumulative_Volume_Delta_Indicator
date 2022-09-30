@@ -3,6 +3,8 @@
 //|                                  Copyright 2022, MetaQuotes Ltd. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
+// Inspired by this article: https://www.mql5.com/en/articles/10
+
 #include <MovingAverages.mqh>
 #property copyright "Copyright 2022, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
@@ -15,7 +17,7 @@
 
 #property indicator_type1   DRAW_COLOR_HISTOGRAM
 #property indicator_label1  "Cumulative Delta Volume"
-#property indicator_color1  clrDarkGreen,clrTomato
+#property indicator_color1  clrDarkGreen,clrCrimson
 #property indicator_width1  4
 #property indicator_level1  0.0
 #property indicator_levelstyle STYLE_SOLID
@@ -38,7 +40,7 @@ double cumulative_buying_volume_Buffer[];
 double cumulative_selling_volume_Buffer[];
 double HistogramColorBuffer[];
 
-string text;
+string text; // text for debugging
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -78,7 +80,7 @@ int OnInit()
    PlotIndexSetInteger(0,PLOT_DRAW_BEGIN,CDIPeriod-1);
 
    string shortname;
-   StringConcatenate(shortname,"CDI ( ",CDIPeriod," )");
+   StringConcatenate(shortname,"CDI ( Averaging = ",CDIPeriod," Bars range = ",CDIRange," )");
    PlotIndexSetString(0,PLOT_LABEL,shortname);
    IndicatorSetString(INDICATOR_SHORTNAME,shortname);
    IndicatorSetInteger(INDICATOR_DIGITS,2);
@@ -107,24 +109,33 @@ int OnCalculate(const int rates_total,
       return(0);
      }
 
-//--- set limit for which bars need to be (re)calculated
-   int limit;
-
-   if(prev_calculated==0 || prev_calculated<0 || prev_calculated>rates_total)
-      limit=rates_total-1;
-   else
-      limit=rates_total-prev_calculated;
-
-   int range;
-
-   if(limit < CDIRange)
-      range = 0;
-   else
-      range = CDIRange;
-
-   for(int i=limit; i>=limit-range; i--)
+//--- if it is the first call
+   if(prev_calculated==0)
      {
+      //--- set zero values to zero indexes
+      cumulative_volume_delta_Buffer[0] = 0.0;
+      upper_wick_Buffer[0] = 0.0;
+      lower_wick_Buffer[0] = 0.0;
+      spread_Buffer[0] = 0.0;
+      body_length_Buffer[0] = 0.0;
+      percent_upper_wick_Buffer[0] = 0.0;
+      percent_lower_wick_Buffer[0] = 0.0;
+      percent_body_length_Buffer[0] = 0.0;
+      buying_volume_Buffer[0] = 0.0;
+      selling_volume_Buffer[0] = 0.0;
+      cumulative_buying_volume_Buffer[0] = 0.0;
+      cumulative_selling_volume_Buffer[0] = 0.0;
+      HistogramColorBuffer[0] = 0.0;
+     }
+//--- calculate values of mtm and |mtm|
+   int start;
+   if(prev_calculated==0)
+      start=rates_total - CDIRange;
+   else
+      start=prev_calculated-1;
 
+   for(int i=start; i<rates_total; i++)
+     {
       //upper_wick_Buffer
       if(close[i]>open[i])
          upper_wick_Buffer[i] = NormalizeDouble(high[i]-close[i],_Digits);
@@ -160,9 +171,9 @@ int OnCalculate(const int rates_total,
 
       //selling_volume
       if(close[i]<open[i])
-         selling_volume_Buffer[i] = NormalizeDouble((percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],5);
+         selling_volume_Buffer[i] = NormalizeDouble((percent_body_length_Buffer[i] + (percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2)*tick_volume[i],0);
       else
-         selling_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i],5);
+         selling_volume_Buffer[i] = NormalizeDouble(((percent_upper_wick_Buffer[i] + percent_lower_wick_Buffer[i])/2) * tick_volume[i],0);
 
      }
 
@@ -170,9 +181,13 @@ int OnCalculate(const int rates_total,
    ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,buying_volume_Buffer,cumulative_buying_volume_Buffer);
    ExponentialMAOnBuffer(rates_total,prev_calculated,0,CDIPeriod,selling_volume_Buffer,cumulative_selling_volume_Buffer);
 
-   for(int i=limit; i>=limit-range; i--)
-     {
+   if(prev_calculated==0)
+      start=CDIPeriod-1; // set the starting index for input arrays
+   else
+      start=prev_calculated-1;    // set
 
+   for(int i=start; i<rates_total; i++)
+     {
       //cumulative_volume_delta_Buffer
       cumulative_volume_delta_Buffer[i] = NormalizeDouble(cumulative_buying_volume_Buffer[i] - cumulative_selling_volume_Buffer[i],5);
 
@@ -182,24 +197,25 @@ int OnCalculate(const int rates_total,
       else
          HistogramColorBuffer[i]=1;
 
+      //For debugging
+      //      text="";
+      //      text += DoubleToString(upper_wick_Buffer[i],4) + " upper_wick_Buffer\n";
+      //      text += DoubleToString(lower_wick_Buffer[i],4) + " lower_wick_Buffer\n";
+      //      text += DoubleToString(spread_Buffer[i],4) + " spread_Buffer\n";
+      //      text += DoubleToString(body_length_Buffer[i],4) + " body_length_Buffer\n";
+      //      text += DoubleToString(percent_upper_wick_Buffer[i],4) + " percent_upper_wick_Buffer\n";
+      //      text += DoubleToString(percent_lower_wick_Buffer[i],4) + " percent_lower_wick_Buffer\n";
+      //      text += DoubleToString(upper_wick_Buffer[i],4) + " upper_wick_Buffer\n";
+      //      text += DoubleToString(percent_body_length_Buffer[i],4) + " percent_body_length_Buffer\n";
+      //      text += DoubleToString(buying_volume_Buffer[i],4) + " buying_volume_Buffer\n";
+      //      text += DoubleToString(percent_body_length_Buffer[i],4) + " percent_body_length_Buffer\n";
+      //      text += DoubleToString(selling_volume_Buffer[i],4) + " selling_volume_Buffer\n";
+      //      text += DoubleToString(cumulative_buying_volume_Buffer[i],4) + " cumulative_buying_volume_Buffer\n";
+      //      text += DoubleToString(cumulative_selling_volume_Buffer[i],4) + " cumulative_selling_volume_Buffer\n";
+      //      text += DoubleToString(cumulative_volume_delta_Buffer[i],4) + " cumulative_volume_delta_Buffer\n";
+      //      text += DoubleToString(HistogramColorBuffer[i],4) + " HistogramColorBuffer\n";
+      //      Comment(text);
 
-      text="";
-      text += DoubleToString(upper_wick_Buffer[i],4) + " upper_wick_Buffer\n";
-      text += DoubleToString(lower_wick_Buffer[i],4) + " lower_wick_Buffer\n";
-      text += DoubleToString(spread_Buffer[i],4) + " spread_Buffer\n";
-      text += DoubleToString(body_length_Buffer[i],4) + " body_length_Buffer\n";
-      text += DoubleToString(percent_upper_wick_Buffer[i],4) + " percent_upper_wick_Buffer\n";
-      text += DoubleToString(percent_lower_wick_Buffer[i],4) + " percent_lower_wick_Buffer\n";
-      text += DoubleToString(upper_wick_Buffer[i],4) + " upper_wick_Buffer\n";
-      text += DoubleToString(percent_body_length_Buffer[i],4) + " percent_body_length_Buffer\n";
-      text += DoubleToString(buying_volume_Buffer[i],4) + " buying_volume_Buffer\n";
-      text += DoubleToString(percent_body_length_Buffer[i],4) + " percent_body_length_Buffer\n";
-      text += DoubleToString(selling_volume_Buffer[i],4) + " selling_volume_Buffer\n";
-      text += DoubleToString(cumulative_buying_volume_Buffer[i],4) + " cumulative_buying_volume_Buffer\n";
-      text += DoubleToString(cumulative_selling_volume_Buffer[i],4) + " cumulative_selling_volume_Buffer\n";
-      text += DoubleToString(cumulative_volume_delta_Buffer[i],4) + " cumulative_volume_delta_Buffer\n";
-      text += DoubleToString(HistogramColorBuffer[i],4) + " HistogramColorBuffer\n";
-      Comment(text);
      }
 
    return(rates_total);
